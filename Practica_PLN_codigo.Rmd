@@ -13,10 +13,10 @@ date: "`r Sys.Date()`"
 rm(list = ls())
 ```
 
-## Lectura del archivo 10000 palabras
-```{r, message=FALSE, warning=FALSE}
+## 1º Parte
 
-## Lectura del html y transformación a dataframe
+### Lectura del archivo 10000 palabras
+```{r, message=FALSE, warning=FALSE}
 
 # Leer el archivo
 lineas <- readLines("10000_formas_ortograficas.txt", 
@@ -44,13 +44,57 @@ tabla <- data.frame(Forma = formas,
 head(tabla)
 tail(tabla)
 ```
+## Ley de Zipf
 
-## Apartado 1.1
 ```{r}
+## APARTADO 1
+# Creamos la columna de rangos
+tabla$rango <- 1:nrow(tabla)
+
+# Gráfico log-log
+plot(log10(tabla$rango),
+     log10(tabla$Frecuencia),
+     pch = 20, cex = 0.5,
+     xlab = "log10(Rango)",
+     ylab = "log10(Frecuencia)",
+     main = "Ley de Zipf: Frecuencia vs Rango (escala log-log)")
+
+# Ajuste lineal para visualizar la tendencia
+modelo <- lm(log10(Frecuencia) ~ log10(rango), data = tabla)
+abline(modelo, col = "red", lwd = 2)
 
 ```
 
-## Apartado 1.2
+### Apartado 1.1
+```{r}
+## Apartado 1.1
+# 1.1.1) BUSCAR FORMAS REPETIDAS
+
+duplicadas <- tabla$Forma[duplicated(tabla$Forma)]
+duplicadas
+
+
+# 1.1.2) SI HAY DUPLICADAS, MOSTRAR DETALLES
+
+if (length(duplicadas) > 0) {
+  
+  lista_repetidas <- lapply(duplicadas, function(f) {
+    indices <- which(tabla$Forma == f)
+    data.frame(
+      Forma = f,
+      Linea = indices,
+      Frecuencia = tabla$Frecuencia[indices]
+    )
+  })
+  
+  resultado <- do.call(rbind, lista_repetidas)
+  resultado
+  
+} else {
+  print("No hay formas repetidas en este listado.")}
+```
+
+### Apartado 1.2
 ```{r}
 ## Apartado 1.2
 
@@ -73,14 +117,20 @@ for (i in 1:5) {
 
 ```
 
-## Apartado 1.3
+### Apartado 1.3
 ```{r, message=FALSE, warning=FALSE}
+library(stringi)
+#Normalización
+formas_norm <- stri_trans_nfc(tabla$Forma) # normaliza acentos
+formas_norm <- gsub("\u00A0", " ", formas_norm) 
+formas_norm <- gsub("\t", " ", formas_norm)
+
 # Función para detectar si la palabra contiene caracter no español
 tiene_no_espanoles <- function(texto) {
-  grepl("[^A-Za-zñÑáéíóúÁÉÍÓÚüÜ .,;:¡!¿?—-]", texto)
+  grepl("[^A-Za-zñÑáéíóúÁÉÍÓÚüÜ .,;:¡!¿?—–-]", texto)
 }
 
-no_espanol <- tiene_no_espanoles(tabla$Forma)
+no_espanol <- tiene_no_espanoles(formas_norm)
 
 # Número de palabras con caracteres no españoles (según nuestro criterio)
 num_no_espanol <- sum(no_espanol)
@@ -88,6 +138,63 @@ cat("El nº de formas no españolas según nuestro criterio es: ", num_no_espano
 
 #Ejemplos
 head(tabla$Forma[no_espanol],20)
+
+```
+
+## 2º Parte
+### Lectura del archivo 10000 palabras
+```{r, warning=FALSE}
+# Leer el archivo
+lineas2 <- readLines("frecuencia_formas_ortograficas_1_3.txt", 
+                   encoding = "UTF-8")
+lineas2[0:4]
+# Buscar donde empieza la priemra linea
+linea_inicio2 <- grep("^[^0-9\t\n]+\t[0-9]+\t[0-9]+", lineas2)[1]
+
+
+# Extraer todas las líneas a partir del inicio
+datos2 <- lineas2[linea_inicio2:(linea_inicio2 + length(lineas2)-2)] #El -2 pq sinó aparecen 2 lineas vacias
+
+# Separar cada línea por tabulador (\t)
+partes2 <- strsplit(datos2, "\t")
+partes2[0:4]
+# Extraer las columnas
+formas2 <- sapply(partes2, function(x) x[1])
+frecuencias2 <- as.numeric(sapply(partes2, function(x) x[2]))
+frec_norm2 <- as.numeric(sapply(partes2, function(x) x[3]))
+
+# Crear el dataframe 
+tabla2 <- data.frame(Forma = formas2,
+                    Frecuencia = frecuencias2,
+                    Frec.norm = frec_norm2,
+                    stringsAsFactors = FALSE)
+head(tabla2)
+tail(tabla2)
+```
+### Apartado 2.3
+```{r, message=FALSE, warning=FALSE}
+library(stringi)
+
+#Normalización
+formas_norm2 <- stri_trans_nfc(tabla2$Forma) # normaliza acentos
+formas_norm2 <- gsub("\u00A0", " ", formas_norm2) 
+formas_norm2 <- gsub("\t", " ", formas_norm2)
+
+# Función para detectar si la palabra contiene caracter no español
+tiene_no_espanoles <- function(texto) {
+  grepl("[^A-Za-zñÑáéíóúÁÉÍÓÚüÜ .,;:¡!¿?—–-]", texto)
+}
+
+no_espanol2 <- tiene_no_espanoles(formas_norm2)
+
+# Número de palabras con caracteres no españoles (según nuestro criterio)
+num_no_espanol2 <- sum(no_espanol2)
+cat("El nº de formas no españolas según nuestro criterio es: ", num_no_espanol2)
+
+#Ejemplos
+head(tabla2$Forma[no_espanol2],20)
+tail(tabla2$Forma[no_espanol2],20)
+#tabla2$Forma[no_espanol2]
 
 ```
 
